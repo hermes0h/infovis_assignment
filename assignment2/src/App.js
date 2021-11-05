@@ -31,6 +31,19 @@ function App() {
           {name + " (" + studentNum + ")"}
         </h2>
       </div>
+      <div class="splotContainer">
+        <Mainplot
+          nominal={nominal}
+          ordinal={ordinal}
+          quantitative={quantitative}
+          width={width}
+          height={height}
+          margin={margin}
+          pointSize={pointSize}
+          maxPointSize={maxPointSize}
+          data={movies}
+        />
+      </div>
     </div>
   );
 }
