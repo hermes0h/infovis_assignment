@@ -22,6 +22,7 @@ const Mainplot = (props) => {
     };
 
     const [state, setState] = useState(default_state);
+    const [table, setTable] = useState();
 
     /* Takes new state dictionary and replace current state with this new state */
     const changeState = (temp) => {
@@ -50,17 +51,25 @@ const Mainplot = (props) => {
 
     let yAxis = d3.axisLeft(yScale);
 
+    // brush
+    const brush = d3
+        .brush()
+        .extent([
+            [0, 0],
+            [props.width, props.height],
+        ])
+
+    let selected = [];
+
     useEffect(() => {
         const svg = d3.select(splotSvg.current);
 
-        // Default x-axis
         svg.append("g")
             .attr("class", "xaxis")
             .attr("transform",
                 `translate(${props.margin}, ${props.margin + props.height})`)
             .call(xAxis);
 
-        // Default y-axis
         svg.append("g")
             .attr("class", "yaxis")
             .attr("transform",
@@ -78,25 +87,11 @@ const Mainplot = (props) => {
             .attr("cx", (d) => xScale(parseFloat(d.imdb_rating)))
             .attr("cy", (d) => yScale(parseFloat(d.us_gross)))
             .style("fill", null);
+
     }, []);
 
     useEffect(() => {
         const svg = d3.select(splotSvg.current);
-
-        // Change x,y-axis corrospondingly
-        xScale
-            .domain([
-                d3.min(data, (d) => parseFloat(d[state["x"]])),
-                d3.max(data, (d) => parseFloat(d[state["x"]]))
-            ])
-            .range([0, props.width]);
-
-        yScale
-            .domain([
-                d3.min(data, (d) => parseFloat(d[state["y"]])),
-                d3.max(data, (d) => parseFloat(d[state["y"]]))
-            ])
-            .range([props.height, 0]);
 
         // scale for point color
         let pointColorScale = d3.scaleOrdinal()
@@ -119,8 +114,6 @@ const Mainplot = (props) => {
             ])
             .range([props.pointSize, props.maxPointSize]);
 
-        svg.select(".xaxis").transition().duration(1000).call(d3.axisBottom(xScale));
-        svg.select(".yaxis").transition().duration(1000).call(d3.axisLeft(yScale));
         svg.selectAll("circle")
             .transition()
             .duration(1000)
@@ -138,11 +131,73 @@ const Mainplot = (props) => {
                 return state["size"] === "none" ?
                     props.pointSize :
                     pointSizeScale(parseFloat(d[state["size"]]));
-            })
+            });
+    }, [state["color"], state["opacity"], state["size"]]);
+
+    useEffect(() => {
+        const svg = d3.select(splotSvg.current);
+
+        // Change x,y-axis corrospondingly
+        xScale = d3.scaleLinear()
+            .domain([
+                d3.min(data, (d) => parseFloat(d[state["x"]])),
+                d3.max(data, (d) => parseFloat(d[state["x"]]))
+            ])
+            .range([0, props.width]);
+
+        yScale = d3.scaleLinear()
+            .domain([
+                d3.min(data, (d) => parseFloat(d[state["y"]])),
+                d3.max(data, (d) => parseFloat(d[state["y"]]))
+            ])
+            .range([props.height, 0]);
+
+        svg.select(".xaxis").transition().duration(1000).call(d3.axisBottom(xScale));
+        svg.select(".yaxis").transition().duration(1000).call(d3.axisLeft(yScale));
+        svg.selectAll("circle")
+            .transition()
+            .duration(1000)
             .attr("cx", (d) => xScale(parseFloat(d[state["x"]])))
             .attr("cy", (d) => yScale(parseFloat(d[state["y"]])));
 
-    }, [state]);
+        // Remove original brush and insert new one
+        svg.select(".brush").remove();
+        setTable([]);
+        const circle = svg.selectAll("circle");
+        circle.attr("stroke", null);
+
+        brush.on("end", ({ selection }) => {
+            selected = [];
+            circle.attr("stroke", null);
+            if (selection === null) {
+                circle.classed("selected", false);
+            } else {
+                let [[x0, y0], [x1, y1]] = selection;
+                circle.classed("selected", (d, i) => {
+                    let x = xScale(parseFloat(d[state["x"]]));
+                    let y = yScale(parseFloat(d[state["y"]]));
+                    if (x0 <= x && x <= x1 && y0 <= y && y <= y1) {
+                        selected.push({
+                            title: d.title,
+                            genre: d.genre,
+                            creative_type: d.creative_type,
+                            release: d.release,
+                            rating: d.rating
+                        });
+                    }
+                    return x0 <= x && x <= x1 && y0 <= y && y <= y1;
+                });
+            }
+            setTable(selected);
+            svg.selectAll(".selected").attr("stroke", "black");
+        });
+
+        svg
+            .append("g")
+            .attr("transform", `translate(${props.margin}, ${props.margin})`)
+            .attr("class", "brush")
+            .call(brush);
+    }, [state["x"], state["y"]]);
 
     return (
         <div>
@@ -155,12 +210,14 @@ const Mainplot = (props) => {
                     changeState={changeState}
                 />
             </div>
-            <div>
+            <div style={{ display: "flex" }}>
                 <svg ref={splotSvg} width={svgWidth} height={svgHeight}></svg>
+                <TableView
+                    selected={table}
+                />
             </div>
         </div>
     );
-
 }
 
 export default Mainplot;
