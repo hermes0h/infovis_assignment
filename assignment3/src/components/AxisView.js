@@ -1,4 +1,4 @@
-import React, {useRef, useEffect} from "react";
+import React, { useRef, useEffect } from "react";
 import * as d3 from "d3";
 
 const AxisView = (props) => {
@@ -8,7 +8,7 @@ const AxisView = (props) => {
 
   let xScale = d3.scaleLinear().domain([-1, 1]).range([0, props.width]);
 
-  let yScale = d3.scaleLinear().domain([-1, 1]).range([props.height, 0]);
+  let yScale = d3.scaleLinear().domain([-1, 1]).range([0, props.height]);
 
   let radius_factor = (props.radius * 2) / props.width;
 
@@ -19,7 +19,7 @@ const AxisView = (props) => {
     svg
       .append("g")
       .append("circle")
-      .attr("class", "domain")
+      .attr("class", "axisDomain")
       .attr("transform", `translate(${props.margin}, ${props.margin})`)
       .attr("cx", xScale(0))
       .attr("cy", yScale(0))
